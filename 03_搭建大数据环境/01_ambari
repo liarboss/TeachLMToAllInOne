@@ -3,3 +3,6 @@ https://blog.51cto.com/u_13193683/2980086
 
 # 启动ambari
 ambari-server start
+
+1. ambari
+2. hdfs + hive + hbase + tez + kafka + solr
