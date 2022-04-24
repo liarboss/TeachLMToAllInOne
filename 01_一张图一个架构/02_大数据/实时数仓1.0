@@ -1,0 +1,5 @@
+如上图所示，从最源端出发，中台埋点日志通过flume采集到kafka，mysql的binlog日志由cdc方式采集到kafka，通过Flinksql消费kafka数据进行ETL并输出宽表，
+其中维表分为大维表（百万级以上数据量）及小维表，大维表需要通过Hive历史数据进行初始化到Hbase中，并通过binlog数据由Flinksql进行消费增量更新到Hbase中，
+小维表直接查询维表库或业务从库进行缓存。宽表明细数据会输出第二个dw层kafka，通过此kafka及可做汇总等操作输出到最终共享层，clickhouse有很强的大数据量聚合能力，
+在单表查询上也有很好的表现，为自助查询平台及实时分析工具提供数据支撑，但不支持update/delete操作，且不支持高并发场景，官方建议qps是100
+
