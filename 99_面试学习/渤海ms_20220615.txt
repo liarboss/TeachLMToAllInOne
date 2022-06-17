@@ -1,0 +1,45 @@
+提前准备.
+1、在多线程环境中使用HashMap会有什么问题？在什么情况下使用get()方法会产生无限循环？
+--. 丢失元素：hashcode碰撞的时候本来形成链表，但多线程会覆盖
+--. 死循环：多线程resize时链表会产生死循环导致cpu超高
+
+2、不重写Bean的hashCode()方法是否会对性能带来影响？
+--. 对象比较的时候会用到hashcode，hashcode写的不好会增加碰撞几率，造成浪费，比如hashmap添加元素就会造成频繁冲突
+
+3、对于一个不可修改的类，它的每个对象是不是都必须声明成final的？
+--. 不对，应该用private修饰，同时不提供setter等修改的方法。final修饰的对象只是不能重新赋值，但还是可以修改其引用对象内部的属性
+
+4、String的substring()方法内部是如何实现的？
+--. 1.6之前substring会有内存泄露问题，1.8之后就不会有了，因为1.8不在引用之前的char[]，而是建立新的char[]
+
+5、你在写存储过程或者在Java里调用存储过程的时候如何来处理错误情况？
+--. 捕获异常，存储过程最好不要使用(参考阿里手册)，会有版本控制问题，同时也不方便业务扩展
+
+6、Java 中新的 Lock 接口相对于同步代码块（synchronized block）有什么优势？
+--. lock的 tryLock(long time, TimeUnit unit))，有限时长等待。解决一直等待问题
+--. 多线程读写文件，synchornized无法使多线程读只进行读，而非写操作，lock的ReentrantReadWriteLock可以解决这个问题
+--. synchornized是内置特性，lock是java接口
+--. synchornized自动释放锁，lock需要手动释放锁
+
+7、Executor.submit()和Executor.execute()这两个方法有什么区别？
+--. submit会将异常信息包装到返回对象，当使用future.get的时候回重新抛出异常,execute如果不捕获异常会出现system.err
+
+8、能否写一段用Java 4或5来遍历一个HashMap的代码？
+--. 增强for，keyset()或者entryset()
+
+9、你在什么时候会重写hashCode()和equals()方法？
+--. 当进行相等判断的时候需要重写这两个方法
+
+10、如果不重写hashCode方法会有什么问题？
+--. 会破坏约定，比如hashmap会先比较hashcode再比较equal，不写的话put到hashmap会产生问题。
+
+11、HashMap在调用get()方法的时候equals()和hashCode()方法都起了什么样的作用？
+--. put的时候先用hashcode判断，放到数组的哪个位置，然后用equal去链表中进行比较，确定key是否存在
+
+12、在Java中如何避免死锁？
+--. 合理调整加锁解锁顺序解决
+--. 不循环加锁、不阻塞
+
+13、说说ClassLoader.loadClass()与Class.forName()的区别
+class.forName会加载静态代码块，ClassLoader.loadClass不会加载静态代码块
+
