@@ -1,0 +1,50 @@
+33 | 下一代微服务架构Service Mesh
+
+1）什么是Service Mesh？
+    我认为是Service Mesh是一种新型的用于处理服务与服务之间通信的技术，尤其适用以云原生应用形式部署的服务，能够保证服务与服务之间调用的可靠性。
+    在实际部署时，Service Mesh通常以轻量级的网络代理的方式跟应用的代码部署在一起，从而以应用无感知的方式实现服务治理。
+
+2）service mesh与传统的微服务架构有着本质的区别？
+    跨语言服务调用的需要
+    云原生应用服务治理的需
+
+3）Service Mesh的实现原理
+    SideCar
+    Control Plane
+
+34 | Istio：Service Mesh的代表产品
+1）Istio整体架构
+    Proxy，就是前面提到的SideCar，与应用程序部署在同一个主机上，应用程序之间的调用都通过Proxy来转发，目前支持HTTP/1.1、HTTP/2、gRPC以及TCP请求。
+    Control Plane，与Proxy通信，来实现各种服务治理功能，包括三个基本组件：Pilot、Mixer以及Citadel。
+2）Proxy
+
+
+35 | 微博Service Mesh实践之路（上）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
