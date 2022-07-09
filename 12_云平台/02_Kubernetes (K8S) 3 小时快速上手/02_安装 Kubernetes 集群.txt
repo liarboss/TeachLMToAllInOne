@@ -1,0 +1,50 @@
+安装 Kubernetes 集群
+
+1. 安装方式介绍
+    minikube
+        只是一个 K8S 集群模拟器，只有一个节点的集群，只为测试用，master 和 worker 都在一起
+    直接用云平台 Kubernetes
+        可视化搭建，只需简单几步就可以创建好一个集群。
+        优点：安装简单，生态齐全，负载均衡器、存储等都给你配套好，简单操作就搞定
+    裸机安装（Bare Metal）
+        至少需要两台机器（主节点、工作节点个一台），需要自己安装 Kubernetes 组件，配置会稍微麻烦点。
+        可以到各云厂商按时租用服务器，费用低，用完就销毁。
+        缺点：配置麻烦，缺少生态支持，例如负载均衡器、云存储。
+
+
+
+2. minikube
+    # 启动集群
+    minikube start
+    # 查看节点。kubectl 是一个用来跟 K8S 集群进行交互的命令行工具
+    kubectl get node
+    # 停止集群
+    minikube stop
+    # 清空集群
+    minikube delete --all
+    # 安装集群可视化 Web UI 控制台
+    minikube dashboard
+
+    # 查看kube所有组件
+    minikube kubectl -- get pods -A
+
+
+3. 查看node节点情况
+    kubectl get node
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
