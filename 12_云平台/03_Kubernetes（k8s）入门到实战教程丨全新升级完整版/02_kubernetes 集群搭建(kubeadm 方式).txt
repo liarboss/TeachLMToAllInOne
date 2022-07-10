@@ -56,9 +56,9 @@
         $ systemctl enable kubelet
 9）部署 Kubernetes Master
     $ kubeadm init \
-    --apiserver-advertise-address=192.168.31.61 \
+    --apiserver-advertise-address=172.27.104.64 \
     --image-repository registry.aliyuncs.com/google_containers \
-    --kubernetes-version v1.17.0 \
+    --kubernetes-version v1.24.2 \
     --service-cidr=10.96.0.0/12 \
     --pod-network-cidr=10.244.0.0/16
 10）安装 Pod 网络插件（CNI）
@@ -69,14 +69,22 @@
     --discovery-token-ca-cert-hash sha256:00603a05805807501d7181c3d60b478788408cfe6cedefedb1f97569708be9c5
 12）测试 kubernetes 集群
     $ kubectl create deployment nginx --image=nginx
-    $ kubectl expose deployment nginx --port=8088 --type=NodePort
+    $ kubectl expose deployment nginx --port=80 --type=NodePort
     $ kubectl get pod,svc
-    访问地址：http://172.27.104.64:80
+    访问地址：http://172.27.104.64:8088
+
+
+docker tag registry.aliyuncs.com/google_containers/kube-apiserver:v1.24.2 k8s.gcr.io/kube-apiserver:v1.24.2
+docker tag registry.aliyuncs.com/google_containers/kube-controller-manager:v1.24.2 k8s.gcr.io/kube-controller-manager:v1.24.2
+docker tag registry.aliyuncs.com/google_containers/kube-scheduler:v1.24.2 k8s.gcr.io/kube-scheduler:v1.24.2
+docker tag registry.aliyuncs.com/google_containers/kube-proxy:v1.24.2 k8s.gcr.io/kube-proxy:v1.24.2
+docker tag registry.aliyuncs.com/google_containers/pause:3.7 k8s.gcr.io/pause:3.7
+docker tag registry.aliyuncs.com/google_containers/etcd:3.5.3-0 k8s.gcr.io/etcd:3.5.3-0
+docker tag registry.aliyuncs.com/google_containers/coredns:v1.8.6 k8s.gcr.io/coredns/coredns:v1.8.6
 
 
 
-
-
+yum install -y kubelet-1.23.6 kubeadm-1.23.6 kubectl-1.23.6
 
 
 
