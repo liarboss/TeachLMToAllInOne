@@ -1,0 +1,44 @@
+四、kubernetes 集群 YAML 文件详解
+
+1. 常用字段，必须存在的属性（图03-01）
+
+
+2. 创建一个namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: test
+
+
+3. 创建一个pod
+apiVersion: v1
+kind: Pod
+metadata:
+    name: pod1
+spec:
+    containers:
+        - name: nginx-contailners
+          image: nginx:latest
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,91 @@
+二、kubernetes 集群搭建(kubeadm 方式)
+
+1. k8s常用两种部署方式
+    kubeadm：Kubeadm 是一个 K8s 部署工具，提供 kubeadm init 和 kubeadm join，用于快速部 署 Kubernetes 集群
+    二进制包：从 github 下载发行版的二进制包，手动部署每个组件，组成 Kubernetes 集群。
+
+    Kubeadm 降低部署门槛，但屏蔽了很多细节，遇到问题很难排查。如果想更容易可 控，推荐使用二进制包部署 Kubernetes 集群，虽然手动部署麻烦点，
+    期间可以学习很 多工作原理，也利于后期维护。
+
+
+2. kubeadm 部署方式介绍
+    第一、创建一个 Master 节点 kubeadm init
+    第二， 将 Node 节点加入到当前集群中 $ kubeadm join <Master 节点的 IP 和端口 >
+
+
+3. 安装要求
+    - 一台或多台机器，操作系统 CentOS7.x-86_x64
+    - 硬件配置：2GB 或更多 RAM，2 个 CPU 或更多 CPU，硬盘 30GB 或更多
+    - 集群中所有机器之间网络互通
+    - 可以访问外网，需要拉取镜像
+    - 禁止 swap 分区
+
+
+4. kubeadm安装步骤
+1）关闭防火墙
+    $ systemctl stop firewalld
+    $ systemctl disable firewalld
+2）关闭 selinux：
+    $ sed -i 's/enforcing/disabled/' /etc/selinux/config # 永久
+    $ setenforce 0 # 临时
+3）关闭 swap：
+    $ swapoff -a # 临时
+    $ vim /etc/fstab # 永久
+4）主机名：
+    $ hostnamectl set-hostname <hostname>
+5）在 master 添加 hosts：
+    $ cat >> /etc/hosts << EOF
+    192.168.31.61 k8s-master
+    192.168.31.62 k8s-node1
+    192.168.31.63 k8s-node2
+    EOF
+6）将桥接的 IPv4 流量传递到 iptables 的链：
+    $ cat > /etc/sysctl.d/k8s.conf << EOF
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+    EOF
+    $ sysctl --system # 生效
+7）时间同步：
+    $ yum install ntpdate -y
+    $ ntpdate time.windows.com
+8）所有节点安装 Docker/kubeadm/kubelet
+    安装 Docker
+    添加阿里云 YUM 软件源
+    安装 kubeadm，kubelet 和 kubectl
+        $ yum install -y kubelet kubeadm kubectl
+        $ systemctl enable kubelet
+9）部署 Kubernetes Master
+    $ kubeadm init \
+    --apiserver-advertise-address=192.168.31.61 \
+    --image-repository registry.aliyuncs.com/google_containers \
+    --kubernetes-version v1.17.0 \
+    --service-cidr=10.96.0.0/12 \
+    --pod-network-cidr=10.244.0.0/16
+10）安装 Pod 网络插件（CNI）
+   $ kubectl apply –f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube- flannel.yml
+11）加入 Kubernetes Node
+    $ kubeadm join 192.168.31.61:6443
+    --token esce21.q6hetwm8si29qxwn \
+    --discovery-token-ca-cert-hash sha256:00603a05805807501d7181c3d60b478788408cfe6cedefedb1f97569708be9c5
+12）测试 kubernetes 集群
+    $ kubectl create deployment nginx --image=nginx
+    $ kubectl expose deployment nginx --port=8088 --type=NodePort
+    $ kubectl get pod,svc
+    访问地址：http://172.27.104.64:80
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
