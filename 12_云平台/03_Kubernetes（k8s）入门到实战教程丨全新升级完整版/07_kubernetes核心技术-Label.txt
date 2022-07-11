@@ -1,0 +1,48 @@
+七、kubernetes核心技术-Label
+
+1. Label概述
+    Label是Kubernetes系统中另一个核心概念。一个Label是一个key=value的键值对，其中key与value由用户自己指定。Label可以附加到各种资源对象上，如Node、Pod、
+    Service、RC，一个资源对象可以定义任意数量的Label，同一个Label也可以被添加到任意数量的资源对象上，Label通常在资源对象定义时确定，也可以在对象创建后动态添加或删除。
+    Label的最常见的用法是使用metadata.labels字段，来为对象添加Label，通过
+    spec.selector来引用对象
+
+2. label示例
+apiVersion: v1
+kind: ReplicationController metadata:
+name: nginx spec:
+replicas: 3 selector:
+app: nginx template:
+metadata:
+    labels:
+    app: nginx
+spec:
+    containers:
+        - name: nginx image: nginxports:
+        - containerPort: 80
+-------------------------------------
+apiVersion: v1 kind: Service metadata: name: nginx
+spec:
+    type: NodePort
+    ports:
+    - port: 80
+nodePort:3333 selector:
+app: nginx
+
+    Label附加到Kubernetes集群中各种资源对象上，目的就是对这些资源对象进行分组管理，而分组管理的核心就是LabelSelector。Label与LabelSelector都是不能单独定义，
+必须附加在一些资源对象的定义文件上，一般附加在RC和Service的资源定义文件中
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

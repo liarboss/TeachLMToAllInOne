@@ -1,0 +1,79 @@
+八、kubernetes核心技术-Controller控制器
+
+1. replication Controller
+        ReplicationController(RC)是Kubernetes系统中核心概念之一，当我们定义了一个RC
+    并提交到Kubernetes集群中以后，Master节点上的ControllerManager组件就得到通知，定期检查系统中存活的Pod,并确保目标Pod实例的数量刚好等于RC的预期值，如果有过
+    多或过少的Pod运行，系统就会停掉或创建一些Pod.此外我们也可以通过修改RC的副本
+    数量，来实现Pod的动态缩放功能。
+
+    kubectl scale rc nginx --replicas = 5
+
+    由于ReplicationController与Kubernetes代码中的模块ReplicationController同名，所以在Kubernetesv1.2时，它就升级成了另外一个新的概念ReplicaSets,官方解释为
+    下一代的RC，它与RC区别是:ReplicaSets支援基于集合的Labelselector,而RC只支
+    持基于等式的LabelSelector。我们很少单独使用ReplicaSet,它主要被Deployment这
+    个更高层面的资源对象所使用，从而形成一整套Pod创建、删除、更新的编排机制。最好
+    不要越过RC直接创建Pod，因为ReplicationController会通过RC管理Pod副本，实
+    现自动创建、补足、替换、删除Pod副本，这样就能提高应用的容灾能力，减少由于节点
+    崩溃等意外状况造成的损失。即使应用程序只有一个Pod副本，也强烈建议使用RC来定
+    义Pod
+
+2. ReplicaSet
+    ReplicaSet跟ReplicationController没有本质的不同，只是名字不一样，并且
+    ReplicaSet支持集合式的selector (ReplicationController仅支持等式)
+    Kubernetes官方强烈建议避免直接使用ReplicaSet，而应该通过Deployment来创建RS和Pod。
+    由于ReplicaSet是ReplicationController的代替物，因此用法基本相同，唯一的区别在于ReplicaSet支持集合式的selector。
+
+3. Deployment
+    Deployment是Kubenetesv1.2引入的新概念，引入的目的是为了更好的解决Pod的编排问题，Deployment内部使用了ReplicaSet来实现。
+    Deployment的定义与ReplicaSet的定义很类似，除了API声明与Kind类型有所区别：
+
+apiVersion : extensions/v1beta1 kind : Deployment
+metadata:
+name: frontend spec:
+replicas: 1 selector:
+matchLabels:
+tier: frontend matchExpressions:
+-{key:tier,operator:In,values:[frontend]} template:
+metadata:
+labels:
+app: app-demo tier : frontend
+spec:
+containers:
+-name:tomcat-demo image:tomcat ports:
+-containerPort:8080
+
+
+4. Horizontal Pod Autoscaler
+    HorizontalPodAutoscal(Pod横向扩容简称HPA)与RC、Deployment一样，也属于一种Kubernetes资源对象。通过追踪分析RC控制的所有目标Pod的负载变化情况，
+来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理。
+    Kubernetes对Pod扩容与缩容提供了手动和自动两种模式，手动模式通过kubectlscale 命令对一个Deployment/RC进行Pod副本数量的设置。自动模式则需要用户根据某个性能指标或者自定义业务指标，
+并指定Pod副本数量的范围，系统将自动在这个范围内根据性能指标的变化进行调整。
+    1）手动扩缩容
+    kubectl scale deployment frontend --replicas 1
+    2）自动扩容和缩容
+        HPA控制器基本Master的kube-controller-manager服务启动参数--horizontal-pod-autoscaler-sync-period定义的时长(默认值为30s),
+    周期性地监测Pod的CPU使用率，并在满足条件时对RC或Deployment中的Pod副本数量进行调整，以符合用户定义的平均PodCPU使用率。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
