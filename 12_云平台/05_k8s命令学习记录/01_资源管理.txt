@@ -1,0 +1,99 @@
+1. 直接通过命令操作资源
+kubectl run nginx-pod --image=nginx:1.17.1 --port=80
+
+2. 通过命令配置和配置文件操作资源
+kubectl create/patch/delete -f nginx-pod.yaml
+
+3. 通过apply和配置文件操作资源
+kubectl apply -f nginx-pod.yaml
+
+4. 查看所有pod
+kubectl get pod
+
+5. 以yaml格式查询某个pod
+kubectl get pod xxx -o yaml
+
+6. 查看help
+kubectl --help
+
+7. 查看所有资源
+kubectl api-resources
+
+8. 查询命名空间
+kubectl get ns
+
+9. 创建命名空间
+kubectl create ns dev
+
+10. 删除命名空间
+kubectl delete ns dev
+
+11. 命令式对象配置例子
+
+1）创建一个 nginxpod.yaml 文件
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginxpod
+  namespace: dev
+spec:
+  containers:
+    - name: nginx-containers
+      image: nginx:1.17.1
+
+2）执行 create 命令，创建资源
+kubectl create -f nginxpod.yaml
+
+3）执行 get 命令，查看资源
+kubectl get -f nginxpod.yaml
+
+4）执行 delete 命令，删除资源
+kubectl delete -f nginxpod.yaml
+
+
+12. 声明式对象配置流程
+1）创建一个 nginxpod.yaml 文件
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginxpod
+  namespace: dev
+spec:
+  containers:
+    - name: nginx-containers
+      image: nginx:1.17.1
+
+2）执行apply命令
+kubectl apply -f nginxpod.yaml
+
+
+13. kubectl可以在node上运行
+scp -r $HOME/.kube k8s-node1:$HOME
+
+14. 如何快速的编写ymal
+1）使用kubectl create命令生成ymal文件
+kubectl create deployment nginx --image=nginx:1.17.1 --dry-run=client -n dev -o yaml > test.yaml
+2）使用kubectl get导出yaml(此种方式已经不建议使用)
+kubectl get deployment nginx -n dev -o yaml --export > test2.yaml
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,202 @@
+1. 查看所有namespace
+kubectl get namespace
+kubectl get ns
+
+2. 查看指定的命名空间
+kubectl get namespace default
+kubectl get ns default
+
+3. 指定命名空间的输出格式
+kubectl get ns default -o wide
+kubectl get ns default -o json
+kubectl get ns default -o yaml
+
+4. 查看命名空间的详情
+kubectl describe namespace default
+kubectl describe ns default
+
+5. 创建命名空间
+kubectl create namespace dev
+kubectl create ns dev
+
+6. 删除命名空间
+kubectl delete ns dev
+
+7. 命令式对象配置
+1） 新建ns-dev.yaml：
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+
+2）通过命令式对象配置进行创建和删除
+kubectl create -f ns-dev.yaml
+kubectl delete -f ns-dev.yaml
+
+8. 查看某个ns下所有pod
+kubectl get pods -n kube-system
+
+9. 在名称为dev的namespace下创建一个Nginx的Pod
+kubectl run nginx --image=nginx:1.17.1 --port=80 --namespace=dev
+
+10. 查看名称为dev的namespace下的Pod的名称为nginx的详细信息
+kubectl describe pod nginx -n dev
+
+11. 获取Pod的IP
+kubectl get pods -n dev -o wide
+curl 10.244.2.7:80
+
+12. 删除指定的pod
+kubectl delete pod nginx -n dev
+
+13. 命令式pod配置
+1）新建pod-nginx.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: dev
+spec:
+  containers:
+  - image: nginx:1.17.1
+    imagePullPolicy: IfNotPresent
+    name: pod
+    ports:
+    - name: nginx-port
+      containerPort: 80
+      protocol: TCP
+
+2）执行创建和删除命令
+kubectl create -f pod-nginx.yaml
+kubectl delete -f pod-nginx.yaml
+
+14. 为资源打标签
+kubectl label pod nginx version=1.0 -n dev
+
+15. 为nginx的pod更新标签
+kubectl label pod nginx version=2.0 -n dev --overwrite
+
+16. 显示nginx得pod的标签
+kubectl get pod nginx -n dev --show-labels
+
+17. 筛选版本号是2.0的在名称为dev的namespace下的Pod
+kubectl get pod -l version=2.0 -n dev --show-labels
+
+18. 删除名称为dev的namespace下的Nginx的Pod上的标签
+kubectl get pod -l version=2.0 -n dev --show-labels
+
+
+19. 命令式对象配置
+1）新建pod-nginx.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: dev
+  labels:
+    version: "3.0"
+    env: "test"
+spec:
+  containers:
+  - image: nginx:1.17.1
+    imagePullPolicy: IfNotPresent
+    name: pod
+    ports:
+    - name: nginx-port
+      containerPort: 80
+      protocol: TCP
+
+2） 执行创建和删除命令
+kubectl create -f pod-nginx.yaml
+kubectl delete -f pod-nginx.yaml
+
+
+20. Deployment
+1. 在名称为test的命名空间下创建名为nginx的deployment
+kubectl create deployment nginx --image=nginx:1.17.1 -n test
+
+2. 在名称为test的命名空间下根据名为nginx的deployment创建4个Pod
+kubectl scale deployment nginx --replicas=4 -n dev
+
+3. 命令式对象配置deployment
+1）创建一个deploy-nginx.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      run: nginx
+  template:
+    metadata:
+      labels:
+        run: nginx
+    spec:
+      containers:
+      - image: nginx:1.17.1
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+
+2）执行创建和删除命令
+kubectl create -f deploy-nginx.yaml
+kubectl delete -f deploy-nginx.yaml
+
+3）查看名为dev的namespace下的名为nginx的deployment的详细信息
+kubectl describe deployment nginx -n dev
+
+4）删除名为dev的namespace下的名为nginx的deployment
+kubectl delete deployment nginx -n dev
+
+
+21. 暴露名为test的namespace下的名为nginx的deployment，并设置服务名为svc-nginx1
+kubectl expose deployment nginx --name=svc-nginx1 --type=ClusterIP --port=80 --target-port=80 -n test
+
+22. 查看名为test的命名空间的所有Service
+kubectl get service -n test
+
+23. 暴露名为test的namespace下的名为nginx的deployment，并设置服务名为svc-nginx2
+kubectl expose deploy nginx --name=svc-nginx2 --type=NodePort --port=80 --target-port=80 -n test
+
+24. 查看名为test的命名空间的所有Service
+kubectl get service -n test
+
+25. 删除服务
+kubectl delete service svc-nginx1 -n test
+
+26. 对象配置方式
+1）新建svc-nginx.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-nginx
+  namespace: dev
+spec:
+  clusterIP: 10.109.179.231
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: nginx
+  type: ClusterIP
+
+2）执行创建和删除命令
+kubectl  create  -f  svc-nginx.yaml
+kubectl  delete  -f  svc-nginx.yaml
+
+
+
+
+
+
+
+
+
+
+
+
