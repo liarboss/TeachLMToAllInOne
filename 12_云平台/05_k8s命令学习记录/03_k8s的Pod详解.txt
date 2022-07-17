@@ -1,0 +1,949 @@
+1. Pod的资源清单
+
+apiVersion: v1     #必选，版本号，例如v1
+kind: Pod       　 #必选，资源类型，例如 Pod
+metadata:       　 #必选，元数据
+  name: string     #必选，Pod名称
+  namespace: string  #Pod所属的命名空间,默认为"default"
+  labels:       　　  #自定义标签列表
+    - name: string      　
+spec:  #必选，Pod中容器的详细定义
+  containers:  #必选，Pod中容器列表
+  - name: string   #必选，容器名称
+    image: string  #必选，容器的镜像名称
+    imagePullPolicy: [ Always|Never|IfNotPresent ]  #获取镜像的策略
+    command: [string]   #容器的启动命令列表，如不指定，使用打包时使用的启动命令
+    args: [string]      #容器的启动命令参数列表
+    workingDir: string  #容器的工作目录
+    volumeMounts:       #挂载到容器内部的存储卷配置
+    - name: string      #引用pod定义的共享存储卷的名称，需用volumes[]部分定义的的卷名
+      mountPath: string #存储卷在容器内mount的绝对路径，应少于512字符
+      readOnly: boolean #是否为只读模式
+    ports: #需要暴露的端口库号列表
+    - name: string        #端口的名称
+      containerPort: int  #容器需要监听的端口号
+      hostPort: int       #容器所在主机需要监听的端口号，默认与Container相同
+      protocol: string    #端口协议，支持TCP和UDP，默认TCP
+    env:   #容器运行前需设置的环境变量列表
+    - name: string  #环境变量名称
+      value: string #环境变量的值
+    resources: #资源限制和请求的设置
+      limits:  #资源限制的设置
+        cpu: string     #Cpu的限制，单位为core数，将用于docker run --cpu-shares参数
+        memory: string  #内存限制，单位可以为Mib/Gib，将用于docker run --memory参数
+      requests: #资源请求的设置
+        cpu: string    #Cpu请求，容器启动的初始可用数量
+        memory: string #内存请求,容器启动的初始可用数量
+    lifecycle: #生命周期钩子
+		postStart: #容器启动后立即执行此钩子,如果执行失败,会根据重启策略进行重启
+		preStop: #容器终止前执行此钩子,无论结果如何,容器都会终止
+    livenessProbe:  #对Pod内各容器健康检查的设置，当探测无响应几次后将自动重启该容器
+      exec:       　 #对Pod容器内检查方式设置为exec方式
+        command: [string]  #exec方式需要制定的命令或脚本
+      httpGet:       #对Pod内个容器健康检查方法设置为HttpGet，需要制定Path、port
+        path: string
+        port: number
+        host: string
+        scheme: string
+        HttpHeaders:
+        - name: string
+          value: string
+      tcpSocket:     #对Pod内个容器健康检查方式设置为tcpSocket方式
+         port: number
+       initialDelaySeconds: 0       #容器启动完成后首次探测的时间，单位为秒
+       timeoutSeconds: 0    　　    #对容器健康检查探测等待响应的超时时间，单位秒，默认1秒
+       periodSeconds: 0     　　    #对容器监控检查的定期探测时间设置，单位秒，默认10秒一次
+       successThreshold: 0
+       failureThreshold: 0
+       securityContext:
+         privileged: false
+  restartPolicy: [Always | Never | OnFailure]  #Pod的重启策略
+  nodeName: <string> #设置NodeName表示将该Pod调度到指定到名称的node节点上
+  nodeSelector: obeject #设置NodeSelector表示将该Pod调度到包含这个label的node上
+  imagePullSecrets: #Pull镜像时使用的secret名称，以key：secretkey格式指定
+  - name: string
+  hostNetwork: false   #是否使用主机网络模式，默认为false，如果设置为true，表示使用宿主机网络
+  volumes:   #在该pod上定义共享存储卷列表
+  - name: string    #共享存储卷名称 （volumes类型有很多种）
+    emptyDir: {}       #类型为emtyDir的存储卷，与Pod同生命周期的一个临时目录。为空值
+    hostPath: string   #类型为hostPath的存储卷，表示挂载Pod所在宿主机的目录
+      path: string      　　        #Pod所在宿主机的目录，将被用于同期中mount的目录
+    secret:       　　　#类型为secret的存储卷，挂载集群与定义的secret对象到容器内部
+      scretname: string
+      items:
+      - key: string
+        path: string
+    configMap:         #类型为configMap的存储卷，挂载预定义的configMap对象到容器内部
+      name: string
+      items:
+      - key: string
+        path: string
+
+
+2. 查看资源类型为pod的可配置项
+kubectl explain pod
+
+3. 查看资源类型为Pod的metadata的属性的可配置项
+kubectl explain pod.metadata
+
+4. 查看pod.spec.containers的可选配置项
+kubectl explain pod.spec.containers
+
+5. pod基本配置
+1）创建pod-base.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-base
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+    - name: busybox # 容器名称
+      image: busybox:1.30 # 容器需要的镜像地址
+
+2）创建Pod
+kubectl apply -f pod-base.yaml
+
+3）查看Pod状况
+kubectl get pod -n dev
+
+4）通过describe查看内部的详情
+# 此时已经运行起来了一个基本的Pod，虽然它暂时有问题
+kubectl describe pod pod-base -n dev
+
+
+6. 镜像拉取策略
+1）创建pod-imagepullpolicy.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-imagepullpolicy
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: Always # 用于设置镜像的拉取策略 Always/IfNotPresent/Never
+    - name: busybox # 容器名称
+      image: busybox:1.30 # 容器需要的镜像地址
+
+2）创建Pod
+kubectl apply -f pod-imagepullpolicy.yaml
+
+3）查看Pod详情
+kubectl describe pod pod-imagepullpolicy -n dev
+
+
+7. 启动一个没有一直启动得工具类容器(通过command)
+1）创建pod-command.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-command
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: IfNotPresent # 设置镜像拉取策略
+    - name: busybox # 容器名称
+      image: busybox:1.30 # 容器需要的镜像地址
+      command: ["/bin/sh","-c","touch /tmp/hello.txt;while true;do /bin/echo $(date +%T) >> /tmp/hello.txt;sleep 3;done;"]
+
+2）创建Pod
+kubectl apply -f pod-command.yaml
+
+3）查看Pod状态
+kubectl get pod pod-command -n dev
+
+4）进入Pod中的busybox容器，查看文件内容
+# 在容器中执行命令
+# kubectl exec -it pod的名称 -n 命名空间 -c 容器名称 /bin/sh
+kubectl exec -it pod-command -n dev -c busybox /bin/sh
+
+
+8. 设置容器中环境变量
+1） 创建pod-evn.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-env
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: IfNotPresent # 设置镜像拉取策略
+    - name: busybox # 容器名称
+      image: busybox:1.30 # 容器需要的镜像地址
+      command: ["/bin/sh","-c","touch /tmp/hello.txt;while true;do /bin/echo $(date +%T) >> /tmp/hello.txt;sleep 3;done;"]
+      env:
+        - name: "username"
+          value: "admin"
+        - name: "password"
+          value: "123456"
+
+2） 创建pod
+kubectl create -f pod-env.yaml
+
+3） 进入容器，输出环境变量测试
+kubectl exec -it pod-env -n dev -c busybox -it /bin/sh
+
+
+9. 设置容器的端口
+1）查看ports支持的子选项
+kubectl explain pod.spec.containers.ports
+2）创建pod-ports.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-ports
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: IfNotPresent # 设置镜像拉取策略
+      ports:
+        - name: nginx-port # 端口名称，如果执行，必须保证name在Pod中是唯一的
+          containerPort: 80 # 容器要监听的端口 （0~65536）
+          protocol: TCP # 端口协议
+
+3）创建pod
+kubectl create -f pod-ports.yaml
+
+
+10. 资源配置
+1）创建pod-resoures.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-resoures
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: IfNotPresent # 设置镜像拉取策略
+      ports: # 端口设置
+        - name: nginx-port # 端口名称，如果执行，必须保证name在Pod中是唯一的
+          containerPort: 80 # 容器要监听的端口 （0~65536）
+          protocol: TCP # 端口协议
+      resources: # 资源配额
+        limits: # 限制资源的上限
+          cpu: "2" # CPU限制，单位是core数
+          memory: "10Gi" # 内存限制
+        requests: # 限制资源的下限
+          cpu: "1" # CPU限制，单位是core数
+          memory: "10Mi" # 内存限制
+
+2）创建Pod
+kubectl create -f pod-resource.yaml
+
+3）查看发现Pod运行正常
+kubectl get pod pod-resoures -n dev
+
+4）停止Pod
+kubectl delete -f pod-resource.yaml
+
+5）编辑Pod，修改resources.requests.memory的值为10Gi
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-resoures
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers:
+    - name: nginx # 容器名称
+      image: nginx:1.17.1 # 容器需要的镜像地址
+      imagePullPolicy: IfNotPresent # 设置镜像拉取策略
+      ports: # 端口设置
+        - name: nginx-port # 端口名称，如果执行，必须保证name在Pod中是唯一的
+          containerPort: 80 # 容器要监听的端口 （0~65536）
+          protocol: TCP # 端口协议
+      resources: # 资源配额
+        limits: # 限制资源的上限
+          cpu: "2" # CPU限制，单位是core数
+          memory: "10Gi" # 内存限制
+        requests: # 限制资源的下限
+          cpu: "1" # CPU限制，单位是core数
+          memory: "10Gi" # 内存限制
+
+6）再次启动Pod
+kubectl create -f pod-resource.yaml
+
+7）查看Pod状态，发现Pod启动失败
+kubectl get pod pod-resoures -n dev -o wide
+
+8）查看Pod详情会发现(内存不足)
+kubectl describe pod pod-resoures -n dev
+
+
+
+11. pod的生命周期-初始化执行
+1）以主容器来运行Nginx，但是要求在运行Nginx之前要能够连接上MySQL和Redis所在的服务器
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-initcontainer
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      resources:
+        limits:
+          cpu: "2"
+          memory: "10Gi"
+        requests:
+          cpu: "1"
+          memory: "10Mi"
+  initContainers: # 初始化容器配置
+    - name: test-mysql
+      image: busybox:1.30
+      command: ["sh","-c","until ping 192.168.18.103 -c 1;do echo waiting for mysql ...;sleep 2;done;"]
+      securityContext:
+        privileged: true # 使用特权模式运行容器
+    - name: test-redis
+      image: busybox:1.30
+      command: ["sh","-c","until ping 192.168.18.104 -c 1;do echo waiting for redis ...;sleep 2;done;"]
+
+2）创建Pod
+kubectl create -f pod-initcontainer.yaml
+
+3）查看Pod状态(卡在第一个检测)
+kubectl describe pod pod-initcontainer -n dev
+
+4）动态查看Pod
+kubectl get pod pod-initcontainer -n dev -w
+
+5）为当前服务器（192.168.18.100）新增两个IP，观察Pod的变化
+ifconfig ens33:1 192.168.18.103 netmask 255.255.255.0 up
+ifconfig ens33:2 192.168.18.104 netmask 255.255.255.0 up
+
+
+12. pod生命周期-钩子函数
+1）以exec方式为例，演示下钩子函数的使用，创建pod-hook-exec.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-hook-exec
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      resources:
+        limits:
+          cpu: "2"
+          memory: "10Gi"
+        requests:
+          cpu: "1"
+          memory: "10Mi"
+      lifecycle: # 生命周期配置
+        postStart: # 容器创建之后执行，如果失败会重启容器
+          exec: # 在容器启动的时候，执行一条命令，修改掉Nginx的首页内容
+            command: ["/bin/sh","-c","echo postStart ... > /usr/share/nginx/html/index.html"]
+        preStop: # 容器终止之前执行，执行完成之后容器将成功终止，在其完成之前会阻塞删除容器的操作
+          exec: # 在容器停止之前停止Nginx的服务
+            command: ["/usr/sbin/nginx","-s","quit"]
+
+
+2）创建Pod
+kubectl create -f pod-hook-exec.yaml
+
+3）查看Pod
+kubectl get pod pod-hook-exec -n dev -o wide
+
+4）访问Pod
+curl 10.244.1.11
+
+
+13. pod生命周期-容器探测-exec方式
+1）创建pod-liveness-exec.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-liveness-exec
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      livenessProbe: # 存活性探针
+        exec:
+          command: ["/bin/cat","/tmp/hello.txt"] # 执行一个查看文件的命令，必须失败，因为根本没有这个文件
+
+
+2）创建Pod
+kubectl create -f pod-liveness-exec.yaml
+
+3）查看Pod详情
+kubectl describe pod pod-liveness-exec -n dev
+
+4）查看Pod信息
+kubectl get pod pod-liveness-exec -n dev
+
+
+14. pod生命周期-容器探测-tcpSocket方式
+1）创建pod-liveness-tcpsocket.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-liveness-tcpsocket
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      livenessProbe: # 存活性探针
+        tcpSocket:
+          port: 8080 # 尝试访问8080端口，必须失败，因为Pod内部只有一个Nginx容器，而且只是监听了80端口
+
+2）创建Pod
+kubectl create -f pod-liveness-tcpsocket.yaml
+
+3）查看Pod详情
+kubectl describe pod pod-liveness-tcpsocket -n  dev
+
+4）查看Pod信息
+kubectl get pod pod-liveness-tcpsocket -n dev
+
+
+15. pod生命周期-容器探测-httpGet方式
+1）创建pod-liveness-httpget.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-liveness-httpget
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      livenessProbe: # 存活性探针
+        httpGet: # 其实就是访问http://127.0.0.1:80/hello
+          port: 80 # 端口号
+          scheme: HTTP # 支持的协议，HTTP或HTTPS
+          path: /hello # URI地址
+          host: 127.0.0.1 # 主机地址
+
+2）创建Pod
+kubectl create -f pod-liveness-httpget.yaml
+
+3）查看Pod详情
+kubectl describe pod pod-liveness-httpget -n dev
+
+4）查看Pod信息
+kubectl get pod pod-liveness-httpget -n dev
+
+
+16. 查看探测属性
+kubectl explain pod.spec.containers.livenessProbe
+
+17. 重启策略
+1）创建pod-restart-policy.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-restart-policy
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+      livenessProbe: # 存活性探测
+        httpGet:
+          port: 80
+          path: /hello
+          host: 127.0.0.1
+          scheme: HTTP
+  restartPolicy: Never # 重启策略
+
+
+2）创建Pod
+kubectl create -f pod-restart-policy.yaml
+
+3）查看Pod详情，发现nginx容器启动失败
+kubectl describe pod pod-restart-policy -n dev
+
+4）查看Pod
+kubectl get pod pod-restart-policy -n dev
+
+
+18. 定向调度-nodeName
+1）创建一个pod-nodename.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodename
+  namespace: dev
+  labels:
+    user: xudaxian
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  nodeName: k8s-node1 # 指定调度到k8s-node1节点上
+
+2）创建Pod
+kubectl create -f pod-nodename.yaml
+
+3）查看Pod
+kubectl get pod pod-nodename -n dev -o wide
+
+
+19. 定向调度-nodeSelector
+1）首先给node节点添加标签
+kubectl label node k8s-node1 nodeenv=pro
+kubectl label node k8s-node2 nodeenv=test
+
+2）创建pod-nodeselector.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodeselector
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  nodeSelector:
+    nodeenv: pro # 指定调度到具有nodeenv=pro的Node节点上
+
+3）创建Pod
+kubectl create -f pod-nodeselector.yaml
+
+4）查看Pod
+kubectl get pod pod-nodeselector -n dev -o wide
+
+
+20. 亲和性调度-nodeAffinity-requiredDuringSchedulingIgnoredDuringExecution(硬规则)
+1）创建pod-nodeaffinity-required.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodeaffinity-required
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    nodeAffinity: # node亲和性配置
+      requiredDuringSchedulingIgnoredDuringExecution: # Node节点必须满足指定的所有规则才可以，相当于硬规则，类似于定向调度
+        nodeSelectorTerms: # 节点选择列表
+          - matchExpressions:
+              - key: nodeenv # 匹配存在标签的key为nodeenv的节点，并且value是"xxx"或"yyy"的节点
+                operator: In
+                values:
+                  - "xxx"
+                  - "yyy"
+
+2）创建Pod
+kubectl create -f pod-nodeaffinity-required.yaml
+
+3）查看Pod状态
+kubectl get pod pod-nodeaffinity-required -n dev -o wide
+
+4）查看Pod详情（发现调度失败，提示node选择失败）
+kubectl describe pod pod-nodeaffinity-required -n dev
+
+5）删除Pod
+kubectl delete -f pod-nodeaffinity-required.yaml
+
+6）修改pod-nodeaffinity-required.yaml文件，改成pro
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodeaffinity-required
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    nodeAffinity: # node亲和性配置
+      requiredDuringSchedulingIgnoredDuringExecution: # Node节点必须满足指定的所有规则才可以，相当于硬规则，类似于定向调度
+        nodeSelectorTerms: # 节点选择列表
+          - matchExpressions:
+              - key: nodeenv # 匹配存在标签的key为nodeenv的节点，并且value是"xxx"或"yyy"的节点
+                operator: In
+                values:
+                  - "pro"
+                  - "yyy"
+
+
+7) 再次创建Pod
+kubectl create -f pod-nodeaffinity-required.yaml
+
+8) 再次查看Pod
+kubectl get pod pod-nodeaffinity-required -n dev -o wide
+
+
+21. 亲和性调度-nodeAffinity-preferredDuringSchedulingIgnoredDuringExecution(软规则)
+1）创建pod-nodeaffinity-preferred.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodeaffinity-preferred
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    nodeAffinity: # node亲和性配置
+      preferredDuringSchedulingIgnoredDuringExecution: # 优先调度到满足指定的规则的Node，相当于软限制 (倾向)
+        - preference: # 一个节点选择器项，与相应的权重相关联
+            matchExpressions:
+              - key: nodeenv
+                operator: In
+                values:
+                  - "xxx"
+                  - "yyy"
+          weight: 1
+
+
+2）创建Pod
+kubectl create -f pod-nodeaffinity-preferred.yaml
+
+3）查看Pod
+kubectl get pod pod-nodeaffinity-preferred -n dev -o wide
+
+
+22. 亲和性调度-podAffinity-requiredDuringSchedulingIgnoredDuringExecution(硬规则)
+1）创建pod-podaffinity-target.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podaffinity-target
+  namespace: dev
+  labels:
+    podenv: pro # 设置标签
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  nodeName: k8s-node1 # 将目标pod定向调度到k8s-node1
+
+2）创建参照Pod
+kubectl create -f pod-podaffinity-target.yaml
+
+3）查看参照Pod
+kubectl get pod pod-podaffinity-target -n dev -o wide
+
+4）创建pod-podaffinity-requred.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podaffinity-requred
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    podAffinity: # Pod亲和性
+      requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
+        - labelSelector:
+            matchExpressions: # 该Pod必须和拥有标签podenv=xxx或者podenv=yyy的Pod在同一个Node上，显然没有这样的Pod
+              - key: podenv
+                operator: In
+                values:
+                  - "xxx"
+                  - "yyy"
+          topologyKey: kubernetes.io/hostname
+
+5）创建Pod
+kubectl create -f pod-podaffinity-requred.yaml
+
+6）查看Pod状态，发现没有运行
+kubectl get pod pod-podaffinity-requred -n dev
+
+7）查看Pod详情
+kubectl get pod pod-podaffinity-requred -n dev
+
+8）删除Pod
+kubectl delete -f pod-podaffinity-requred.yaml
+
+9）修改pod-podaffinity-requred.yaml文件，改成pro
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podaffinity-requred
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    podAffinity: # Pod亲和性
+      requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
+        - labelSelector:
+            matchExpressions: # 该Pod必须和拥有标签podenv=xxx或者podenv=yyy的Pod在同一个Node上，显然没有这样的Pod
+              - key: podenv
+                operator: In
+                values:
+                  - "pro"
+                  - "yyy"
+          topologyKey: kubernetes.io/hostname
+
+10）再次创建Pod
+kubectl create -f pod-podaffinity-requred.yaml
+
+11）再次查看Pod
+kubectl get pod pod-podaffinity-requred -n dev -o wide
+
+
+
+23. 亲和性调度-podAntiAffinity
+1）创建pod-podantiaffinity-requred.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podantiaffinity-requred
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  affinity: # 亲和性配置
+    podAntiAffinity: # Pod反亲和性
+      requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
+        - labelSelector:
+            matchExpressions:
+              - key: podenv
+                operator: In
+                values:
+                  - "pro"
+          topologyKey: kubernetes.io/hostname
+
+
+2）创建pod
+kubectl create -f pod-podantiaffinity-requred.yaml
+
+3）查看pod
+kubectl get pod -n dev -o wide
+
+
+24. 污点
+# Node被设置了污点之后就和Pod之间存在了一种相斥的关系，进而拒绝Pod调度进来，甚至可以将已经存在的Pod驱逐出去
+  ○ PreferNoSchedule：kubernetes将尽量避免把Pod调度到具有该污点的Node上，除非没有其他节点可以调度。
+  ○ NoSchedule：kubernetes将不会把Pod调度到具有该污点的Node上，但是不会影响当前Node上已经存在的Pod。
+  ○ NoExecute：kubernetes将不会把Pod调度到具有该污点的Node上，同时也会将Node上已经存在的Pod驱逐。
+1）为k8s-node1设置污点（PreferNoSchedule）：
+kubectl taint node k8s-node1 tag=xudaxian:PreferNoSchedule
+
+2）创建Pod1
+kubectl run pod1 --image=nginx:1.17.1 -n dev
+
+3）查看Pod
+kubectl get pod pod1 -n dev -o wide
+
+4）为k8s-node1取消污点（PreferNoSchedule），并设置污点（NoSchedule）：
+kubectl taint node k8s-node1 tag:PreferNoSchedule-
+kubectl taint node k8s-node1 tag=xudaxian:NoSchedule
+
+5）创建Pod2
+kubectl run pod2 --image=nginx:1.17.1 -n dev
+
+6）查看Pod
+kubectl get pod pod1 -n dev -o wide
+kubectl get pod pod2 -n dev -o wide
+
+7）为k8s-node1取消污点（NoSchedule），并设置污点（NoExecute）
+kubectl taint node k8s-node1 tag:NoSchedule-
+kubectl taint node k8s-node1 tag=xudaxian:NoExecute
+
+8）创建Pod3
+kubectl run pod3 --image=nginx:1.17.1 -n dev
+
+9）查看pod
+kubectl get pod pod1 -n dev -o wide
+kubectl get pod pod2 -n dev -o wide
+kubectl get pod pod3 -n dev -o wide
+
+25. 容忍
+#上面介绍了污点的作用，我们可以在Node上添加污点用来拒绝Pod调度上来，但是如果就是想让一个Pod调度到一个有污点的Node上去，这时候应该怎么做？这就需要使用到容忍。
+1）容忍的详细配置
+kubectl explain pod.spec.tolerations
+
+2）创建pod-toleration.yaml文件-调度到有污点的节点
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-toleration
+  namespace: dev
+spec:
+  containers: # 容器配置
+    - name: nginx
+      image: nginx:1.17.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: nginx-port
+          containerPort: 80
+          protocol: TCP
+  tolerations: # 容忍
+    - key: "tag" # 要容忍的污点的key
+      operator: Equal # 操作符
+      value: "xudaxian" # 要容忍的污点的value
+      effect: NoExecute # 添加容忍的规则，这里必须和标记的污点规则相同
+
+
+3）创建Pod
+kubectl create -f pod-toleration.yaml
+
+4）查看Pod
+kubectl get pod pod-toleration -n dev -o wide
+
+
+26. 临时容器
+
+
+27. 服务质量qos-Guaranteed
+● QoS分为如下的三类：
+  ○ ① Guaranteed。
+  ○ ② Burstable。
+  ○ ③ BestEffort。
+
+1）创建命名空间
+kubectl create namespace qos-example
+2）创建qos-demo.yaml文件
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-demo
+  namespace: qos-example
+spec:
+  containers:
+  - name: qos-demo-ctr
+    image: nginx
+    resources:
+      limits:
+        memory: "200Mi"
+        cpu: "700m"
+      requests:
+        memory: "200Mi"
+        cpu: "700m"
+
+3）创建pod
+kubectl create -f qos-demo.yaml
+4）查看Pod详情：这时候就是guaranteed
+kubectl get pod qos-demo -n qos-example -o yaml
+5）删除Pod
+kubectl delete -f qos-demo.yaml
+
+
+
+
+
+
+
+
+
+
+
