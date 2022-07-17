@@ -1,0 +1,308 @@
+1. pod控制器，和适合的场景
+  ○ ReplicationController：比较原始的Pod控制器，已经被废弃，由ReplicaSet替代。
+  ○ ReplicaSet：保证指定数量的Pod运行，并支持Pod数量变更，镜像版本变更。
+  ○ Deployment：通过控制ReplicaSet来控制Pod，并支持滚动升级、版本回退。
+  ○ Horizontal Pod Autoscaler：可以根据集群负载自动调整Pod的数量，实现削峰填谷。
+  ○ DaemonSet：在集群中的指定Node上都运行一个副本，一般用于守护进程类的任务。
+  ○ Job：它创建出来的Pod只要完成任务就立即退出，用于执行一次性任务。
+  ○ CronJob：它创建的Pod会周期性的执行，用于执行周期性的任务。
+  ○ StatefulSet：管理有状态的应用。
+
+
+2. 测试ReplicaSet
+1）创建pc-replicaset.yaml文件
+apiVersion: apps/v1 # 版本号
+kind: ReplicaSet # 类型
+metadata: # 元数据
+  name: pc-replicaset # rs名称
+  namespace: dev # 命名类型
+spec: # 详细描述
+  replicas: 3 # 副本数量
+  selector: # 选择器，通过它指定该控制器可以管理哪些Pod
+    matchLabels: # Labels匹配规则
+      app: nginx-pod
+  template: # 模块 当副本数据不足的时候，会根据下面的模板创建Pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx # 容器名称
+          image: nginx:1.17.1 # 容器需要的镜像地址
+          ports:
+            - containerPort: 80 # 容器所监听的端口
+
+2）创建rs
+kubectl create -f pc-replicaset.yaml
+
+3）查看rs
+kubectl get rs pc-replicaset -n dev -o wide
+
+4）查看当前控制器创建出来的Pod
+kubectl get pod -n dev
+
+5）编辑rs的副本数量，修改spec:replicas:6即可
+kubectl edit rs pc-replicaset -n dev
+
+6）使用scale命令实现扩缩容，后面加上--replicas=n直接指定目标数量即可
+kubectl scale rs pc-replicaset --replicas=2 -n dev
+
+7）使用kubectl delete rs 命令会删除ReplicaSet和其管理的Pod。
+kubectl delete rs pc-replicaset -n dev
+
+
+8）如果希望仅仅删除ReplicaSet对象（保留Pod），只需要在使用kubectl delete rs命令的时候添加--cascade=false选项（不推荐）：
+kubectl delete rs pc-replicaset -n dev --cascade=false
+
+7）使用yaml直接删除（推荐）：
+kubectl delete -f pc-replicaset.yaml
+
+
+3. Deployment（Deploy）
+1）创建pc-deployment.yaml文件
+apiVersion: apps/v1 # 版本号
+kind: Deployment # 类型
+metadata: # 元数据
+  name: pc-deployment # deployment的名称
+  namespace: dev # 命名类型
+spec: # 详细描述
+  replicas: 3 # 副本数量
+  selector: # 选择器，通过它指定该控制器可以管理哪些Pod
+    matchLabels: # Labels匹配规则
+      app: nginx-pod
+  template: # 模块 当副本数据不足的时候，会根据下面的模板创建Pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx # 容器名称
+          image: nginx:1.17.1 # 容器需要的镜像地址
+          ports:
+            - containerPort: 80 # 容器所监听的端口
+
+2）创建Deployment
+kubectl create -f pc-deployment.yaml
+
+3）查看Deployment
+kubectl get deploy pc-deployment -n dev
+
+4）查看ReplicaSet
+kubectl get rs -n dev
+
+5）查看Pod
+kubectl get pod -n dev
+
+6）使用scale命令实现扩缩容
+kubectl scale deploy pc-deployment --replicas=5 -n dev
+
+7）编辑Deployment的副本数量，修改spec:replicas:4即可
+kubectl edit deployment pc-deployment -n dev
+
+
+4. Deployment（Deploy）-重建更新
+1）编辑pc-deployment.yaml文件
+apiVersion: apps/v1 # 版本号
+kind: Deployment # 类型
+metadata: # 元数据
+  name: pc-deployment # deployment的名称
+  namespace: dev # 命名类型
+spec: # 详细描述
+  replicas: 3 # 副本数量
+  strategy: # 镜像更新策略
+    type: Recreate # Recreate：在创建出新的Pod之前会先杀掉所有已经存在的Pod
+  selector: # 选择器，通过它指定该控制器可以管理哪些Pod
+    matchLabels: # Labels匹配规则
+      app: nginx-pod
+  template: # 模块 当副本数据不足的时候，会根据下面的模板创建Pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx # 容器名称
+          image: nginx:1.17.1 # 容器需要的镜像地址
+          ports:
+            - containerPort: 80 # 容器所监听的端口
+
+2）更新Deployment
+kubectl apply -f pc-deployment.yaml
+
+3）镜像升级
+kubectl set image deployment pc-deployment nginx=nginx:1.17.2 -n dev
+
+4）查看升级过程
+kubectl get pod -n dev -w
+
+
+5. Deployment（Deploy）-滚动更新
+1）编辑pc-deployment.yaml文件
+apiVersion: apps/v1 # 版本号
+kind: Deployment # 类型
+metadata: # 元数据
+  name: pc-deployment # deployment的名称
+  namespace: dev # 命名类型
+spec: # 详细描述
+  replicas: 3 # 副本数量
+  strategy: # 镜像更新策略
+    type: RollingUpdate # RollingUpdate：滚动更新，就是杀死一部分，就启动一部分，在更新过程中，存在两个版本的Pod
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  selector: # 选择器，通过它指定该控制器可以管理哪些Pod
+    matchLabels: # Labels匹配规则
+      app: nginx-pod
+  template: # 模块 当副本数据不足的时候，会根据下面的模板创建Pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx # 容器名称
+          image: nginx:1.17.1 # 容器需要的镜像地址
+          ports:
+            - containerPort: 80 # 容器所监听的端口
+
+2）更新Deployment
+kubectl apply -f pc-deployment.yaml
+
+3）镜像升级
+kubectl set image deployment pc-deployment nginx=nginx:1.17.3 -n dev
+
+4）查看升级过程
+kubectl get pod -n dev -w
+
+5）镜像更新中rs的变化
+# 查看rs，发现原来的rs依旧存在，只是Pod的数量变为0，而后又产生了一个rs，Pod的数量变为3
+# 其实这就是deployment能够进行版本回退的奥妙所在
+kubectl get rs -n dev
+
+
+6. Deployment（Deploy）-版本回退
+1）查看当前升级版本的状态
+kubectl rollout status deployment pc-deployment -n dev
+
+2）查看升级历史记录
+kubectl rollout history deployment pc-deployment -n dev
+
+3）可以使用-to-revision=1回退到1版本，如果省略这个选项，就是回退到上个版本，即2版本
+kubectl rollout undo deployment pc-deployment --to-revision=1 -n dev
+
+7. 删除Deployment，其下的ReplicaSet和Pod也会一起被删除
+kubectl delete -f pc-deployment.yaml
+
+
+8. StatefulSet（有状态）-HeadLinessService（无头服务
+    在用Deployment时，每一个Pod名称是没有顺序的，是随机字符串，因此是Pod名称是无序的，但是在StatefulSet中要求必须是有序 ，每一个Pod不能被随意取代，Pod重建后pod名称还是一样的。
+    而Pod IP是变化的，所以是以Pod名称来识别。Pod名称是Pod唯一性的标识符，必须持久稳定有效。这时候要用到无头服务，它可以给每个Pod一个唯一的名称 。
+
+1）创建pc-stateful.yaml文件
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-headliness
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  clusterIP: None # 将clusterIP设置为None，即可创建headliness Service
+  type: ClusterIP
+  ports:
+    - port: 80 # Service的端口
+      targetPort: 80 # Pod的端口
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pc-statefulset
+  namespace: dev
+spec:
+  replicas: 3
+  serviceName: service-headliness
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.17.1
+          ports:
+            - containerPort: 80
+
+2）创建StatefulSet
+kubectl create -f pc-stateful.yaml
+
+3）查看StatefulSet
+kubectl get statefulset pc-statefulset -n dev -o wide
+
+4）查看Pod
+kubectl get pod -n dev -o wide
+
+5）删除StatefulSet
+kubectl delete -f pc-stateful.yaml
+
+6）StatefulSet的金丝雀发布
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-headliness
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  clusterIP: None # 将clusterIP设置为None，即可创建headliness Service
+  type: ClusterIP
+  ports:
+    - port: 80 # Service的端口
+      targetPort: 80 # Pod的端口
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pc-statefulset
+  namespace: dev
+spec:
+  replicas: 3
+  serviceName: service-headliness
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.17.1
+          ports:
+            - containerPort: 80
+
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
