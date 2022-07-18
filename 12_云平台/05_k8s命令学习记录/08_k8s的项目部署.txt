@@ -1,0 +1,123 @@
+1. 容器交付流程
+1）开发阶段
+● 编写代码。
+● 测试。
+● 编写Dockerfile。
+
+2）持续集成
+● 代码编译、打包。
+● 制作镜像。
+● 将镜像上传到镜像仓库
+
+3）应用部署
+● 环境准备。
+● 创建Pod、Service、Ingress。
+
+4）运维
+● 监控。
+● 故障排查。
+● 应用升级及优化。
+● ……
+
+2. k8s中部署Java项目的流程
+● ① 通过Dockerfile制作镜像。
+● ② 将镜像推送到镜像仓库，比如阿里云镜像仓库等。
+● ③ Pod控制器部署镜像。
+● ④ 创建Service或Ingress对外暴露应用。
+● ⑤ 对集群进行监控、升级等。
+1）准备springboot项目
+2）maven打包
+mvn clean install
+
+3）在项目的根目录下新建Dockerfile文件
+FROM openjdk
+VOLUME /tmp
+COPY ./target/springboot2-1.0.jar springboot2-1.0.jar
+RUN bash -c "touch /springboot2-1.0.jar"
+# 声明时区
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone
+#声明运行时容器提供服务端口，这只是一个声明，在运行时并不会因为这个声明应用就会开启这个端口的服务
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","/springboot2-1.0.jar"]
+
+4）使用docker build构建镜像
+docker build -t springboot2 .
+
+5）登录阿里云Docker Registry
+sudo docker login --username=阿里云账号 registry.cn-hangzhou.aliyuncs.com
+6）查看上传的Docker镜像的id
+docker images
+7）给镜像打tag
+sudo docker tag bc56e4a83ff7 registry.cn-hangzhou.aliyuncs.com/k8s-test-123/springboot2:latest
+8）推送镜像
+sudo docker push registry.cn-hangzhou.aliyuncs.com/k8s-test-123/springboot2:latest
+
+9）部署镜像暴露应用-创建deployment.yaml文件
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: springboot2
+  name: springboot2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: springboot2
+  template:
+    metadata:
+      labels:
+        app: springboot2
+    spec:
+      containers:
+      - image: registry.cn-hangzhou.aliyuncs.com/k8s-test-123/springboot2:latest
+        name: springboot2
+
+10）创建Deployment
+kubectl create -f deployment.yaml
+
+11）查看Deployment和Pod
+kubectl get deploy,pod
+
+12）创建service.yaml文件
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: springboot2
+  name: svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 30091
+  selector:
+    app: springboot2
+  type: NodePort
+
+13）创建service
+kubectl create -f service.yaml
+
+14）查看service
+kubectl get service
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

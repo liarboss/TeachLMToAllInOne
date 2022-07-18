@@ -1,0 +1,51 @@
+1. 部署Helm客户端
+1）下载Helm
+wget https://get.helm.sh/helm-v3.2.1-linux-amd64.tar.gz
+2）解压Helm到/usr/bin目录
+tar -zxvf helm-v3.2.1-linux-amd64.tar.gz
+cd linux-amd64/
+cp helm /usr/bin/
+
+
+2. 配置国内Helm仓库
+1）添加微软仓库，并更新仓库
+helm repo add stable http://mirror.azure.cn/kubernetes/charts
+helm repo add aliyun https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
+helm repo update
+
+2）删除存储库
+helm repo remove 仓库名
+
+3）查看配置存储库
+helm repo list
+
+3. Helm基本使用
+1）查询名为weave的chart
+helm search repo weave
+
+2）查看名为stable的仓库中的名为mysql的chart
+helm show chart stable/mysql
+
+3）安装stable/weave-scope，并将其命名为ui
+helm install ui stable/weave-scope
+
+4）查看当前的release列表
+helm list
+
+5）查看安装chart的release为ui的状态
+helm status ui
+
+6）查看Service，并将其改为NodePort
+kubectl edit svc ui-weave-scope
+
+
+
+
+
+
+
+
+
+
+
+
