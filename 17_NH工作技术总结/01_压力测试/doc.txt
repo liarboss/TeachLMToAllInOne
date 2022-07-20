@@ -1,0 +1,18 @@
+1. 压测计划
+2. 压测报告
+
+
+
+
+
+
+jmeter压力测试流程
+https://www.jianshu.com/p/5484ee613048
+
+
+
+网站压力测试报告
+https://max.book118.com/html/2021/0808/8102022052003131.shtm
+
+
+
