@@ -1,0 +1,162 @@
+1. 列出镜像
+docker images
+2. 搜索redis镜像
+docker search redis
+3. 拉取MySQL镜像
+docker pull mysql:5.7
+4. 查看镜像、容器、数据卷所占的空间
+docker system df
+5. 强制删除所有的镜像
+docker rmi mysql:5.7
+
+6. 启动交互式容器
+docker run -it --name=ubuntu ubuntu /bin/bash
+7. 列出当前所有正在运行的容器
+docker ps
+8. 退出容器
+exit
+ctrl + p + q
+9. 启动已停止的容器
+docker start ubuntu
+10. 重启容器
+docker restart ubuntu
+11. 停止容器
+docker stop ubuntu
+12. 强制停止容器
+docker kill ubuntu
+13. 一次强制删除多个容器
+docker rm -f $(docker ps -qa)
+docker ps -qa | xargs docker rm -f
+
+
+14. 实验
+1）拉取镜像
+docker pull redis:6.0.8
+2）启动 ubuntu 容器，以守护式方式
+docker run -d unbutu
+3）以交互式方式启动 redis 容器
+docker run -it redis:6.0.8 /bin/bash
+4）以守护式启动 redis 容器
+docker run -d redis:6.0.8
+5）查看容器日志
+docker logs -f redis
+6）查看容器内运行的进程
+docker top redis
+7）查看容器内部细节
+docker inspect redis
+8）进入正在运行的容器并以命令行交互
+docker exec -it redis /bin/bash
+9）容器和主机文件的互相拷贝
+docker cp redis:/data/a.txt .
+10）导入和导出容器（不常用）
+docker export redis > redis.tar.gz
+docker import redis.tar.gz xudaxian/redis
+
+15. 使用commit制作镜像
+1）拉取 ubuntu 镜像到本地
+docker pull ubuntu
+2）运行 ubuntu 镜像，查看是否携带 vim 命令
+docker run -it --name="ubuntu" ubuntu /bin/bash
+3）在连接互联网的情况下，在容器内部安装 vim
+# 更新包管理器
+apt-get update
+# 安装 vim 命令
+apt-get -y install vim
+4）安装完成后，commit 新的镜像
+docker commit -m="安装有vim的ubuntu镜像" -a="许大仙" ubuntu xudaxian/ubuntu
+5）启动新的镜像，并进行测试
+docker run -it --name="xudaxian-ubuntu" xudaxian/ubuntu /bin/bash
+
+16. 将镜像推送到阿里云
+1）登录阿里云
+docker login --username=**** registry.cn-shanghai.aliyuncs.com
+2）推送镜像
+docker push registry.cn-shanghai.aliyuncs.com/xudaxian/xudaxian-ubuntu:1.0
+3）删除本地镜像
+docker rmi -f registry.cn-shanghai.aliyuncs.com/xudaxian/xudaxian-ubuntu:1.0
+4）下载阿里云镜像到本地
+docker pull registry.cn-shanghai.aliyuncs.com/xudaxian/xudaxian-ubuntu:1.0
+
+
+17. 将本地镜像推送到私有库
+1）下载 Docker Registry 镜像
+docker pull registry
+2）运行Docker Registry 私有库 ，相当于本地有个私有的 Docker Hub
+docker run -d -p 5000:5000 --name="registry"  -v /var/registry/:/tmp/registry --privileged=true registry
+3）curl 验证私服库上有什么镜像
+curl -XGET http://192.168.65.100:5000/v2/_catalog
+4）将镜像打标签
+docker tag xudaxian/ubuntu 192.168.65.100:5000/xudaxian-ubuntu:1.0
+5）修改配置文件以支持 http
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "registry-mirrors": ["https://du3ia00u.mirror.aliyuncs.com"],
+  "live-restore": true,
+  "log-driver":"json-file",
+  "log-opts": {"max-size":"500m", "max-file":"3"},
+  "storage-driver": "overlay2",
+  "insecure-registries":["192.168.65.100:5000"]
+}
+EOF
+6）重启docker
+sudo systemctl daemon-reload && sudo systemctl restart docker
+7）将本地镜像推送到私有库
+docker push 192.168.65.100:5000/xudaxian-ubuntu:1.0
+8）拉取本地镜像
+docker pull 192.168.65.100:5000/xudaxian-ubuntu:1.0
+
+18. docker容器数据卷
+1）宿主机和容器之间映射添加容器数据卷
+docker run -it --privileged=true -v /tmp/ubuntu:/tmp/docker --name=ubuntu ubuntu
+2）查看数据卷是否挂载成功
+docker inspect ubuntu
+
+19. docker应用常规安装-mysql
+1）搜索镜像
+docker search mysql
+2）拉取镜像
+docker pull mysql:5.7
+3）查看镜像
+docker images
+4）启动容器
+docker run -d -p 3306:3306 --name mysql5.7 -v /var/mysql5.7/conf:/etc/mysql/conf.d -v /var/mysql5.7/logs:/var/log/mysql -v /var/mysql5.7/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -e TZ=Asia/Shanghai -e MYSQL_DATABASE=ssm --restart=always mysql:5.7 --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --default-authentication-plugin=mysql_native_password
+
+20. docker应用常规安装-tomcat
+1）搜索镜像
+docker search tomcat
+2）拉取镜像
+docker pull billygoo/tomcat8-jdk8
+3）查看镜像
+docker images
+4）启动容器
+docker run -d -p 8080:8080 --name tomcat8 billygoo/tomcat8-jdk8
+
+21. docker应用常规安装-redis
+1）搜索镜像
+docker pull redis:6.0.8
+2）拉取镜像
+docker pull redis:6.0.8
+3）查看镜像
+docker images
+4）启动容器
+docker run  -p 6379:6379 --name  redis -v /var/redis/data:/data -d redis:6.0.8 redis-server --appendonly yes --requirepass "123456"
+5）使用配置文件启动 Redis 容器
+vim /var/redis/redis.conf
+docker run -p 6379:6379 --name redis -v /var/redis/data:/data -v /var/redis/redis.conf:/etc/redis/redis.conf -d redis:6.0.8 redis-server /etc/redis/redis.conf --appendonly yes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

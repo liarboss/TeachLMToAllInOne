@@ -1,0 +1,234 @@
+1. 管理卷
+
+1）列出所有管理卷
+docker volume ls
+2）创建卷
+docker volume create demo
+3）查询卷详情
+docker volume inspect demo
+4）删除卷
+docker volume rm demo
+5）移除无用卷
+docker volume prune
+
+2. 容器如何挂载卷
+1）Docker 将创建出匿名卷，并保存容器 /usr/share/nginx/html 下面的内容
+docker run -d -P -v /usr/share/nginx/html nginx
+
+2）具名卷
+docker run -d -P -v nginx:/usr/share/nginx/html nginx
+
+3）绑定挂载
+docker run -d -P -v /var/nginx/html:/usr/share/nginx/html nginx
+
+4）模拟实际开发中使用 Nginx
+docker run -d -P -v nginxhtml:/usr/share/nginx/html -v nginxconf:/etc/nginx  nginx
+
+
+3. Dockerfile
+
+# 基础镜像信息
+FROM centos:7.9.2009
+# 维护者信息
+LABEL xudaxian=123456789@qq.com
+ENV DEF_PATH=/usr/local
+WORKDIR $DEF_PATH
+# 安装 vim 编辑器
+RUN yum -y install vim
+# 安装 ifconfig 命令
+RUN yum -y install net-tools
+# 安装 JDK8 以及 lib 库
+RUN yum -y install glibc.i686
+RUN mkdir -pv $DEF_PATH/java
+# 下载 JDK 并解压
+RUN curl https://files-cdn.liferay.com/mirrors/download.oracle.com/otn-pub/java/jdk/8u121-b13/jdk-8u121-linux-x64.tar.gz | tar -xzC $DEF_PATH/java
+# 配置 Java 环境变量
+ENV JAVA_HOME=$DEF_PATH/java/jdk1.8.0_121
+ENV JRE_HOME=$JAVA_HOME/jre
+ENV CLASSPATH=$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib:$CLASSPATH
+ENV PATH=$JAVA_HOME/bin:$PATH
+# CMD：启动时执行指令
+CMD /bin/bash
+
+
+4. dockerfile小案例
+ # 测试案例
+FROM alpine
+LABEL maintainer=xudaxian
+ENV msg='hello Docker'
+RUN echo $msg
+RUN ["echo","$msg"]
+RUN /bin/sh -c 'echo $msg'
+RUN ["/bin/sh","-c","echo $msg"]
+CMD sleep 1000
+
+docker build -t test --force-rm --no-cache .
+
+
+5。 ARG示例（ARG只在构建期有效，在运行期无效）
+
+# 选择基础镜像
+FROM alpine
+# 维护者信息
+LABEL maintainer="许大仙"
+# ARG 指令定义了一个变量，用户可以在构建的时候使用 `--build-arg name=value` 传递，docker build 命令会将其传递给构建器。
+# `--build-arg` 指定参数会覆盖 Dockerfile 中指定的同名参数。
+# 如果用户指定了 `未在 Dockerfile 中定义的构建参数` ，则构建会输出 `警告` 。
+# ARG 只在构建时期有效，运行时期无效。
+# 不建议使用构建时变量来传递注入 github 密码、用户凭据等机密，因为构建时变量的值可以通过 docker history 来观察到。
+# ARG 变量定义从 Dockerfile 定义的行开始生效。
+ARG param="Hi Docker"
+
+# 在构建时期会运行的指令（根据 Dockerfile 创建一个镜像的整个过程时期）
+RUN echo 1111
+RUN echo ${param}
+
+# 在运行时候会运行的指令（根据之前创建的镜像启动一个容器，容器启动默认运行的命令）
+# docker start 或 docker run
+CMD ["/bin/sh","-c","echo 2222;echo $param"]
+
+docker build -t test01 --force-rm --no-cache .
+
+
+5. env示例-环境变量
+
+# 选择基础镜像
+FROM alpine
+# 维护者信息
+LABEL maintainer="许大仙"
+# ARG 指令定义了一个变量，用户可以在构建的时候使用 `--build-arg name=value` 传递，docker build 命令会将其传递给构建器。
+# `--build-arg` 指定参数会覆盖 Dockerfile 中指定的同名参数。
+# 如果用户指定了 `未在 Dockerfile 中定义的构建参数` ，则构建会输出 `警告` 。
+# ARG 只在构建时期有效，运行时期无效。
+# 不建议使用构建时变量来传递注入 github 密码、用户凭据等机密，因为构建时变量的值可以通过 docker history 来观察到。
+# ARG 变量定义从 Dockerfile 定义的行开始生效。
+ARG param="Hi Docker"
+
+# ENV 在构建期和运行期都有效，但是只能在运行期进行修改，修改通过 docker run -e name=value 命令。
+ENV app=taobao
+
+# 在构建时期会运行的指令（根据 Dockerfile 创建一个镜像的整个过程时期）
+RUN echo 1111
+RUN echo ${param}
+RUN echo ${app}
+
+# 在运行时候会运行的指令（根据之前创建的镜像启动一个容器，容器启动默认运行的命令）
+# docker start 或 docker run
+CMD ["/bin/sh","-c","echo 2222;echo $param;echo app_$app"]
+
+docker build -t test --force-rm --no-cache .
+
+docker run -it test
+
+
+6. add示例-往容器内添加东西
+
+FROM alpine
+LABEL maintainer="许大仙"
+# 如果是远程文件，自动下载
+# 如果是压缩文件，自动解压
+# 注意：ADD 并没有自动下载远程压缩文件并解压的功能
+ADD https://download.redis.io/releases/redis-6.2.6.tar.gz /dest/
+# 注意，RUN 指令上下并没有上下文的关系。
+RUN ls -l
+RUN cd /dest && ls -l
+
+docker build -t test --force-rm --no-cache .
+
+
+7. WORKDIR示例，指定后续工作目录
+FROM alpine
+RUN pwd && ls -l
+WORKDIR /app
+RUN pwd && ls -l
+COPY *.txt .
+RUN ls -l
+
+8. volumn示例
+
+FROM alpine
+RUN mkdir /demo && mkdir /app
+RUN echo 111 > /demo/a.txt
+RUN echo 222 > /app/b.txt
+# 挂载 容器指定的文件夹，如果不存在，会自动创建。
+# 指定了 VOLUME 指令后，即使启动容器的时候没有指定 -v 参数，也会自动进行匿名卷挂载。容器内的 /demo 和 /app ，需要在启动容器的时候，需要使用 -v 参数进行挂载。
+# VOLUME 挂载出去的东西，容器改变也不会最终在 docker commit 的时候生效。
+# -v 和 VOLUME 挂载出去的目录，主机变，容器里面也会发生变化，但是
+# ① docker commit 提交当前容器的所有变化为镜像，就会丢弃。
+# ② VOLUME [ "/demo","/app" ] 容器会自动挂载，在之后对这些目录所操作的变化，也会丢弃
+# ③ 挂载仅仅是为了将外边的数据同步到容器里面
+# VOLUME 的最佳实践是写在 CMD 或 ENTRYPOINT 前面
+VOLUME [ "/demo","/app" ]
+# 下面的 2 个 RUN 指令没有生效，因为 VOLUME 指定的挂载目录是固化配置，当执行到 VOLUME 的时候就已经写入到容器中了，即使后面容器怎么变，也不会改变。
+RUN echo 333 > /demo/a.txt
+RUN echo 444 > /app/b.txt
+CMD ping www.baidu.com
+
+9. 删除dangling image
+docker image prune
+
+
+10. 一个springboot dockerfile示例
+
+1）编写dockerfile
+# 以下所有前提 保证 Dockerfile 和项目在同一个文件夹
+# 第一阶段：环境构建
+FROM maven:3.8.4-openjdk-8-slim AS builder
+WORKDIR /app
+# 此时有坑，想想 Maven 的标准目录结构
+COPY src ./src/
+COPY pom.xml .
+RUN mvn clean package -Dmaven.test.skip=true
+# 第二阶段，最小运行时环境，只需要 jre；第二阶段并不会有第一阶段哪些没用的层
+# jdk springboot-actutor（jdk）
+FROM openjdk:8u282-slim
+LABEL maintainer="xxxx@qq.com"
+# 从上一个阶段复制内容
+COPY --from=builder /app/target/*.jar /app.jar
+# 修改时区
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone && touch /app.jar
+# 环境变量
+# docker run -e JAVA_OPTS="-Xmx512m -Xms64m" -e PARAMS="--spring.profiles.active=dev --server.port=8080" xxx
+ENV JAVA_OPTS=""
+ENV PARAMS=""
+# 运行 jar 包
+ENTRYPOINT [ "sh", "-c", "java -Djava.security.egd=file:/dev/./urandom $JAVA_OPTS -jar /app.jar $PARAMS" ]
+
+2）构建
+docker build -t test --force-rm --no-cache .
+3）启动
+docker run -d -P -e JAVA_OPTS="-Xmx512m -Xms64m" -e PARAMS="--spring.profiles.active=dev --server.port=8080" test
+
+
+11. docker网络
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
